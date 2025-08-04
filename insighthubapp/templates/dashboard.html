@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block head %}
+<!-- Import Handsontable -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/styles/handsontable.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/styles/ht-theme-main.min.css" />
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-5 pb-4">
+  <div class="row">
+    <div class="col-sm-12 col-md-12 col-lg-8 pe-5">
+      <ul class="nav nav-tabs" id="mainDashboardTab" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="data-tab" data-bs-toggle="tab" data-bs-target="#data-tab-pane"
+            type="button" role="tab" aria-controls="data-tab-pane" aria-selected="true">Data</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="chart-tab" data-bs-toggle="tab" data-bs-target="#chart-tab-pane" type="button"
+            role="tab" aria-controls="chart-tab-pane" aria-selected="false">Chart</button>
+        </li>
+      </ul>
+      <div class="tab-content py-3" id="mainDashboardContent">
+        <div class="tab-pane fade show active" id="data-tab-pane" role="tabpanel" aria-labelledby="data-tab"
+          tabindex="0">
+          <div id="data-spreadsheet" class="ht-theme-main-dark-auto"></div>
+        </div>
+        <div class="tab-pane fade" id="chart-tab-pane" role="tabpanel" aria-labelledby="chart-tab" tabindex="0">
+          <canvas id="data-chart" class="w-100" height="200px"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-12 col-md-12 col-lg-4" id="control-panel">
+      <!-- data -->
+      <form method="POST" enctype="multipart/form-data" action="{% url 'dashboard' dashboard.id %}" id="data-pan">
+        {% csrf_token %}
+        <h5 class="mb-4">Data Settings</h5>
+        <div class="mb-3">
+          <label for="datasetFile" class="form-label fw-semibold">Data Upload</label>
+          {{ dataset_form.file_path }}
+        </div>
+        <div class="mb-3">
+          <label for="dataXAxis" class="form-label fw-semibold">X-Axis</label>
+          {{ selected_columns_form.x_axis }}
+        </div>
+        <div class="mb-3">
+          <label for="dataYAxis" class="form-label fw-semibold">Y-Axis</label>
+          {{ selected_columns_form.y_axis }}
+        </div>
+        <div class="mb-3">
+          <label for="dataCategory" class="form-label fw-semibold">Category</label>
+          {{ selected_columns_form.category }}
+        </div>
+        <div class="mb-3">
+          <label for="dataYAxis" class="form-label fw-semibold">Value</label>
+          {{ selected_columns_form.series }}
+        </div>
+        <div class="d-flex flex-row">
+          <button type="submit" name="action" value="data" class="btn btn-dark d-flex justify-self-end mt-4 me-3"
+            id="spreadsheet-data-save">Update Spreadsheet</button>
+          <button type="submit" name="action" value="data" class="btn btn-dark d-flex justify-self-end mt-4"
+            id="data-save">Save</button>
+        </div>
+      </form>
+
+      <!-- chart -->
+      <form method="POST" enctype="multipart/form-data" action="{% url 'dashboard' dashboard.id %}" id="chart-pan">
+        {% csrf_token %}
+        <h5 class="mb-4">Chart Settings</h5>
+        <div class="mb-3">
+          <div class="mb-3">
+            <label for="dashboardNameInput" class="form-label fw-semibold">Name</label>
+            {{ dashboard_form.name}}
+          </div>
+          <div class="mb-3">
+            <label for="dashboardDescriptionTextArea" class="form-label fw-semibold">Descriptive Insight</label>
+            {{ dashboard_form.description }}
+          </div>
+          <div class="mb-3">
+            <label for="chartTypeSelection" class="form-label fw-semibold">Chart Type</label>
+            {{ dashboard_form.chart_type }}
+          </div>
+          <div class="mb-3">
+            <label for="statusSelection" class="form-label fw-semibold">Dashboard Status</label>
+            {{ dashboard_form.status }}
+          </div>
+          <button type="submit" name="action" value="chart"
+            class="btn btn-dark d-flex justify-self-end mt-4">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  let hot;
+  const selectedColumn = '{{ axis|escapejs }}'
+
+  // Tab's dynamic content
+  const dataTab = document.getElementById("data-tab");
+  const chartTab = document.getElementById("chart-tab");
+  const dataTabPan = document.getElementById("data-pan");
+  const chartTabPan = document.getElementById("chart-pan");
+
+  chartTabPan.style.display = "none";
+
+  // Spreadsheet
+  document.addEventListener('DOMContentLoaded', function () {
+    const dataContainer = document.getElementById('data-spreadsheet');
+    const chartContainer = document.getElementById('data-chart');
+
+    const csvData = JSON.parse('{{ csv_data|escapejs }}');
+    const axis = JSON.parse('{{ axis|escapejs }}');
+
+    if (dataContainer) {
+      hot = new Handsontable(dataContainer, {
+        data: csvData,
+        rowHeaders: true,
+        colHeaders: true,
+        height: 'auto',
+        autoWrapRow: true,
+        autoWrapCol: true,
+        licenseKey: 'non-commercial-and-evaluation'
+      });
+    }
+
+    dataTab.addEventListener("click", () => {
+      dataTabPan.style.display = "block";
+      chartTabPan.style.display = "none";
+    });
+
+    chartTab.addEventListener("click", () => {
+      if (chartTabPan) {
+        dataTabPan.style.display = "none";
+        chartTabPan.style.display = "block";
+      }
+    });
+
+    // Chart
+    const chartType = document.getElementById("chartTypeSelection").value;
+    if (chartContainer) {
+      const x_axis = axis.find(a => a.x)?.x;
+      const y_axis = axis.find(a => a.y)?.y;
+      const category = axis.find(a => a.category)?.category;
+      const series = axis.find(a => a.series)?.series;
+
+      const xIndex = csvData[0].indexOf(x_axis);
+      const yIndex = csvData[0].indexOf(series);  // assuming 'series' is what we want to plot
+
+      const labels = [];
+      const values = [];
+
+      if (csvData.length === 2) {
+        // Case 2: Only one row of data
+        for (let i = 0; i < csvData[0].length; i++) {
+          labels.push(csvData[0][i]);
+          values.push(csvData[1][i]);
+        }
+      } else {
+        // Case 1: Multiple rows of data
+        for (let i = 1; i < csvData.length; i++) {
+          labels.push(csvData[i][xIndex]);
+          values.push(parseFloat(csvData[i][yIndex]));
+        }
+      }
+
+      if (chartType === "1") {
+        barChart(labels, values, x_axis, y_axis, category, series, chartContainer);
+      } else if (chartType === "2") {
+        lineChart(labels, values, x_axis, y_axis, category, series, chartContainer);
+      } else {
+        barChart(labels, values, x_axis, y_axis, category, series, chartContainer);
+      }
+    }
+  });
+
+  // Bar chart
+  function barChart(labels, values, x_axis, y_axis, category, series, chartContainer) {
+    const chartData = {
+      labels: labels,
+      datasets: [{
+        label: category || series,
+        data: values,
+        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+        borderColor: 'rgb(75, 192, 192)',
+        borderWidth: 1
+      }]
+    };
+
+    new Chart(chartContainer, {
+      type: 'bar',
+      data: chartData,
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'right' },
+        },
+        scales: {
+          x: { title: { display: true, text: x_axis } },
+          y: { title: { display: true, text: y_axis } }
+        }
+      }
+    });
+  }
+
+
+  // Line chart
+  function lineChart(labels, values, x_axis, y_axis, category, series, chartContainer) {
+    console.log("line chart")
+    const chartData = {
+      labels: labels,
+      datasets: [{
+        label: category || series,
+        data: values,
+        borderColor: 'rgb(75, 192, 192)',
+        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+        borderWidth: 1,
+        fill: false,
+        tension: 0.1
+      }]
+    };
+
+    new Chart(chartContainer, {
+      type: 'line',
+      data: chartData,
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'right' },
+        },
+        scales: {
+          x: { title: { display: true, text: x_axis } },
+          y: { title: { display: true, text: y_axis } }
+        }
+      }
+    });
+  }
+
+
+  function letterToNumber(letter) {
+    var number = 0;
+    for (var i = 0; i < csvData.length; i++) {
+      if (csvData[0][i] === letter) {
+        number = i;
+        break;
+      }
+    }
+  }
+
+  // Convert spreadsheet array data to CSV format
+  function arrayToCSV(data) {
+    return data.map(row =>
+      row.map(item =>
+        typeof item === 'string' && item.includes(',')
+          ? `"${item.replace(/"/g, '""')}"`
+          : item
+      ).join(',')
+    ).join('\n');
+  }
+
+  document.getElementById('spreadsheet-data-save').addEventListener('click', function (e) {
+    e.preventDefault();  // Prevent normal form submission
+    const spreadsheetData = hot.getSourceData();  // Get the data from the Handsontable
+    const convertedData = arrayToCSV(spreadsheetData);
+
+    var url = `https://infs3202-b65757a6.uqcloud.net/insighthubproject/dashboard/{{ dashboard.id }}`;
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        'X-Action': 'data'
+      },
+      body: convertedData
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          location.reload();
+        } else {
+          alert("Error saving data.");
+        }
+      })
+  });
+
+</script>
+{% endblock %}

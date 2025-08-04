@@ -1,0 +1,17 @@
+.custom-signup-image-container {
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+.custom-signup-image-container img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block;
+  border-radius: 10px !important;
+}
+
+.custom-signup-form-container {
+  width: 100% !important;
+}

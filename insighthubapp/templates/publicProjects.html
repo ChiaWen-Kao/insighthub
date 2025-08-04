@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block content %}
+<!-- dashboard title -->
+<div class="container-fluid mt-4 px-5">
+  <div class="row">
+    <div class="col-xs-12 col-md-12 col-lg-12">
+      <h3>Public Dashboards</h3>
+    </div>
+  </div>
+</div>
+
+<!-- dashboard preview cards -->
+<div class="container-fluid mt-4 px-5">
+  <div class="row">
+    {% for p in projects %}
+    <div class="col-sm-12 col-md-4 col-lg-3 my-3">
+      <div class="card p-0" onclick="window.location=`{% url 'publicDashboard' p.id %}`">
+        <div width="100%" height="180"
+          class="custom-previewChart-container d-flex justify-content-center align-items-center p-2"
+          id="previewCardContainer-{{ p.id }}">
+          <canvas id="dashboardPreviewChart-{{ p.id }}"></canvas>
+        </div>
+        <div class="card-body">
+          <h5 class="card-title">{{ p.name }}</h5>
+          <p class="card-text">{{ p.description | default:"No description provided." }}</p>
+          <div class="row">
+            <!-- like dashboard -->
+            <div class="col-auto icon-hover" data-default="bi-heart" data-hover="bi-heart-fill">
+              <a class="text-dark text-decoration-none">
+                <i class="bi bi-heart"></i>
+                <span class="ms-1" id="previewCardLike-{{ p.id }}"></span>
+              </a>
+            </div>
+            <!-- comment dashboard -->
+            <div class="col-auto icon-hover" data-default="bi-chat" data-hover="bi-chat-fill">
+              <i class="bi bi-chat"></i>
+              <span class="ms-1" id="previewCardComment-{{ p.id }}"></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  const chartPreviews = JSON.parse(`{{ chart_preview_json|safe }}`);
+
+  chartPreviews.forEach(preview => {
+    const chartLike = document.getElementById(`previewCardLike-${preview.id}`);
+    chartLike.innerHTML = preview.like_count;
+    const canvas = document.getElementById(`dashboardPreviewChart-${preview.id}`);
+    if (canvas) {
+      const chartData = preview.data;
+      const chartType = preview.type;
+      const axis = preview.axis || {};
+
+      if (chartData && chartData.length > 1) {
+        // Use axis info for correct columns
+        const xCol = axis.x || chartData[0][0];
+        const yCol = axis.y || chartData[0][1];
+        const xIndex = chartData[0].indexOf(xCol);
+        const yIndex = chartData[0].indexOf(yCol);
+
+        const labels = [];
+        const values = [];
+        for (let i = 1; i < chartData.length; i++) {
+          labels.push(chartData[i][xIndex]);
+          values.push(parseFloat(chartData[i][yIndex]));
+        }
+
+        new Chart(canvas, {
+          type: chartType,
+          data: {
+            labels: labels,
+            datasets: [{
+              data: values,
+              borderWidth: 1,
+              backgroundColor: '#4e73df',
+            }],
+          },
+          options: {
+            scales: {
+              y: { beginAtZero: true }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: { enabled: false }
+            }
+          }
+        });
+      } else if (!chartData || chartData.length === 0) {
+        const previewCard = document.getElementById(`previewCardContainer-${preview.id}`);
+        previewCard.innerHTML = "You haven't upload data yet...";
+      }
+    }
+  });
+
+</script>
+{% endblock %}

@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block content %}
+<!-- dashboard title -->
+<div class="container-fluid mt-4 px-5">
+  <div class="row">
+    <div class="col-xs-6 col-md-8 col-lg-10">
+      <h3>Dashboards</h3>
+    </div>
+    <div class="col-xs-6 col-md-4 col-lg-2 d-flex justify-content-end">
+      <form method="POST" action="{% url 'create_dashboard' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-dark">Create Dashboard</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- dashboard preview cards -->
+<div class="container-fluid mt-4 px-5">
+  <div class="row">
+    {% for p in projects %}
+    <div class="col-sm-12 col-md-4 col-lg-3 my-3">
+      <div class="card p-0">
+        <div width="100%" height="180"
+          class="custom-previewChart-container d-flex justify-content-center align-items-center p-2"
+          id="previewCardContainer-{{ p.id }}">
+          <canvas id="dashboardPreviewChart-{{ p.id }}"></canvas>
+        </div>
+        <div class="card-body">
+          <h5 class="card-title">{{ p.name }}</h5>
+          <p class="card-text">{{ p.description | default:"No description provided." }}</p>
+          <div class="row">
+            <!-- edit dashboard -->
+            <div class="col-2 icon-hover" data-default="bi-pencil" data-hover="bi-pencil-fill">
+              <a href="{% url 'dashboard' p.id %}" class="text-dark text-decoration-none">
+                <i class="bi bi-pencil"></i>
+              </a>
+            </div>
+
+            <!-- archive dashboard -->
+            <div class="col-2 icon-hover" data-default="bi-archive" data-hover="bi-archive-fill">
+              <button type="submit" style="background: none; border: none; padding: 0;"
+                onclick="openArchiveModal(`{{ p.id }}`)">
+                <i class="bi bi-archive icon-hover"></i>
+              </button>
+            </div>
+
+            <!-- QR code sharing -->
+            <div class="col-2 icon-hover" data-default="bi-share" data-hover="bi-share-fill" data-bs-toggle="modal"
+              data-bs-target="#staticBackdrop">
+              <i class="bi bi-share" onclick="CreateQRCode(`{% url 'publicDashboard' p.id %}`)"></i>
+            </div>
+            <div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+              aria-labelledby="staticBackdropLabel" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="staticBackdropLabel">Share Your Dashboard With Others</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body d-flex flex-column justify-content-center align-items-center p-4">
+                    <img id="share-qrcode-img" class="w-50 mb-5" />
+                    <div class="input-group mb-2">
+                      <input type="text" class="form-control" id="dashboard-url"
+                        placeholder="https://infs3202-b65757a6.uqcloud.net{% url 'publicDashboard' p.id %}"
+                        aria-label="Recipient's username" aria-describedby="button-addon2">
+                      <button class="btn btn-outline-secondary" type="button" id="button-addon2"
+                        onclick="CopytToClipboard()">Copy</button>
+                    </div>
+                    <span id="copy-qrcode-result" class="align-self-start text-success fs-6 text"></span>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <small class="text-body-secondary p-0">Last updated {{ p.updated_at }}</small>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Archive Confirmation Modal -->
+<div class="modal fade" id="archiveConfirmModal" tabindex="-1" aria-labelledby="archiveConfirmModalLabel"
+  aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="archiveConfirmModalLabel">Archive Dashboard</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to archive this dashboard?
+      </div>
+      <div class="modal-footer">
+        <form method="POST" id="archiveForm" style="display: inline;">
+          {% csrf_token %}
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger">Archive</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  // card icons hover animation
+  const iconElements = document.querySelectorAll('.icon-hover');
+
+  iconElements.forEach(el => {
+    const icon = el.querySelector('i');
+    const defaultIcon = el.getAttribute('data-default');
+    const hoverIcon = el.getAttribute('data-hover');
+
+    if (!icon) return;
+
+    el.addEventListener('mouseenter', () => {
+      icon.classList.remove(defaultIcon);
+      icon.classList.add(hoverIcon);
+    });
+
+    el.addEventListener('mouseleave', () => {
+      icon.classList.remove(hoverIcon);
+      icon.classList.add(defaultIcon);
+    });
+  });
+
+  // Archive dashboard confirmation modal
+  function openArchiveModal(dashboardId) {
+    const form = document.getElementById('archiveForm');
+    var url = "{% url 'delete_dashboard' 0 %}".replace('0', dashboardId);
+    form.action = url;
+    console.log("url", url);
+
+    const modal = new bootstrap.Modal(document.getElementById('archiveConfirmModal'));
+    modal.show();
+  }
+
+  // generate QR code
+  function CreateQRCode(url) {
+    console.log("url", url)
+    const qrcodeContainer = document.getElementById('share-qrcode-img');
+    const encodedURL = encodeURIComponent(`https://infs3202-b65757a6.uqcloud.net${url}`);
+    console.log("encodedURL", encodedURL);
+    const qrApiURL = `https://api.qrserver.com/v1/create-qr-code/?data=${encodedURL}&size=200x200`;
+    qrcodeContainer.src = qrApiURL;
+  }
+
+  // copy dashboard share url
+  const CopytToClipboard = async () => {
+    const clipResult = document.getElementById("copy-qrcode-result");
+
+    try {
+      const element = document.getElementById("dashboard-url");
+      const placeholder = element.placeholder;
+      await navigator.clipboard.writeText(placeholder);
+      clipResult.innerHTML = "✅ Successfully copied!";
+    } catch (error) {
+      clipResult.innerHTML = "❌ Failed to copy!";
+    }
+  }
+
+  // preview card
+  const chartPreviews = JSON.parse('{{ chart_previews_json|safe }}');
+
+  chartPreviews.forEach(preview => {
+    const canvas = document.getElementById(`dashboardPreviewChart-${preview.id}`);
+    if (canvas) {
+      const chartData = preview.data;
+      const chartType = preview.type;
+      const axis = preview.axis || {};
+
+      if (chartData && chartData.length > 1) {
+        const xCol = axis.x || chartData[0][0];
+        const yCol = axis.y || chartData[0][1];
+        const xIndex = chartData[0].indexOf(xCol);
+        const yIndex = chartData[0].indexOf(yCol);
+
+        const labels = [];
+        const values = [];
+        for (let i = 1; i < chartData.length; i++) {
+          labels.push(chartData[i][xIndex]);
+          values.push(parseFloat(chartData[i][yIndex]));
+        }
+
+        new Chart(canvas, {
+          type: chartType,
+          data: {
+            labels: labels,
+            datasets: [{
+              data: values,
+              borderWidth: 1,
+              backgroundColor: '#4e73df',
+            }],
+          },
+          options: {
+            scales: {
+              y: { beginAtZero: true }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: { enabled: false }
+            }
+          }
+        });
+      } else if (!chartData || chartData.length === 0) {
+        const previewCard = document.getElementById(`previewCardContainer-${preview.id}`);
+        previewCard.innerHTML = "You haven't upload data yet...";
+      }
+    }
+  });
+</script>
+{% endblock %}

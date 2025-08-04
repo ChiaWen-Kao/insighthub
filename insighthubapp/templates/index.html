@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block content %}
+<!-- Banner -->
+<div class="container-fluid p-0">
+  <div class="custom-banner">
+    <div class="mask-overlay">
+      <h1 class="custom-banner-title custom-test">InsightHub: Transform Data into Insights</h1>
+      <p class="mb-4 custom-banner-title">Seamlessly upload, visualise, and share your data-driven insights.</p>
+      <a type="button" class="btn btn-light" href="{% url 'projects' %}">Start Create</a>
+    </div>
+  </div>
+</div>
+
+<!-- Features Introduction -->
+<div class="container">
+  {% for feature in features %}
+  <div class="row">
+    {% if feature.reverse %}
+    <div class="col-sm-12 col-md-6 col-lg-6 d-flex flex-column justify-content-center p-5">
+      <h4 class="mb-4">{{ feature.title }}</h4>
+      <p>{{ feature.desc }}</p>
+    </div>
+    <div class="col-sm-12 col-md-6 col-lg-6 p-5">
+      <img src="{% static feature.image %}" class="w-100" />
+    </div>
+    {% else %}
+    <div class="col-sm-12 col-md-6 col-lg-6 p-5">
+      <img src="{% static feature.image %}" class="w-100" />
+    </div>
+    <div class="col-sm-12 col-md-6 col-lg-6 d-flex flex-column justify-content-center p-5">
+      <h4 class="mb-4">{{ feature.title }}</h4>
+      <p>{{ feature.desc }}</p>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

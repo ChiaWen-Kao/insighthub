@@ -1,0 +1,29 @@
+Players Table
+•	(PK) user_id (int): Player's id (provided by DB) .
+•	name (var(255)): Player's name, can contain with space and special symbol (255 character max).
+•	username (var(255)): Player's username that will be used on sign in (255 character max).
+•	email (var(255)): Player's email, need to validate the correct email format (255 character max).
+•	photo (var(255)): Store the path (255 character max).
+•	password_hash (var(255)): Store user's login password, need to validate the format, including length, special symbol, captitalise,and etc (255 character max).
+•	create_date (timestamp): User sign up date.
+•	update_date (timestamp): Last time the player modify their peronsal detailed.
+•	(FK) role_id (int): Record user's role, including platform administrator and regular user (0 > regular user, 1 > administrator).
+
+
+Roles Table
+•	(PK) role_id (int): Role's id (provided by DB).
+•	name (var(255)): Role's name (255 character max).
+
+
+Dashboard Table
+•	(PK) dashboard_id (int): Dashboard's id (provided by DB).
+•	name (var(255)): Dashboard's name (255 character max).
+•	description (var(255)): Dashboard's description (255 character max).
+• status (bool): Dashboard has two status - private and public (0 > private, 1 > public).
+•	create_at (timestamp): User create dashboard date.
+•	update_time (timestamp): User modify dashboard date.
+•	(FK) user_id (int): User's id related to the users table.
+•	(FK) chart_id (int): Dashboard can contain one chart related to charts table.
+
+
+Chart table

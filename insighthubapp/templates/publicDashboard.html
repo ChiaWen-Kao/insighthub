@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block content %}
+<div class="container-fluid mt-5 px-5">
+  <div class="row">
+    <div class="col-sm-12 col-md-6 col-lg-7 pe-4">
+      <div width="100%" height="100%" class="d-flex justify-content-center align-items-center p-2">
+        <canvas id="dashboardChart" data-chart='{{ chart_data|safe|escapejs }}'></canvas>
+      </div>
+      <div class="mt-4">
+        <div class="icon-click custom-like-container" data-default="bi-heart" data-click="bi-heart-fill">
+          {% if like %}
+          <i class="bi bi-heart-fill custom-like-icon-color" id="like-button"></i>
+          {% else %}
+          <i class="bi bi-heart custom-like-icon-color" id="like-button"></i>
+          {% endif %}
+          <span id="like-count" class="ms-1">{{ social_likes }}</span>
+        </div>
+      </div>
+      <h3 class="mt-4">{{ publicDashboard.name }}</h3>
+      <p>{{ publicDashboard.description }}</p>
+    </div>
+    <div class="col-sm-12 col-md-6 col-lg-5 ps-4">
+      <h5>Comment</h5>
+      <form method="POST" action="{% url 'create_publicDashboard_comment' publicDashboard.id %}" class="mb-4">
+        {% csrf_token %}
+        <div class="row mt-4">
+          <div class="col-auto d-flex justify-content-start">
+            <div class="custom-user-img">
+              <img
+                src="data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22286%22%20height%3D%22180%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20286%20180%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_195dc964b01%20text%20%7B%20fill%3A%23999%3Bfont-weight%3Anormal%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20monospace%3Bfont-size%3A14pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_195dc964b01%22%3E%3Crect%20width%3D%22286%22%20height%3D%22180%22%20fill%3D%22%23373940%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22107.1953125%22%20y%3D%2296.3%22%3E286x180%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E"
+                class="w-100" />
+            </div>
+          </div>
+          <div class="col">
+            <div class="mb-3">
+              {{ comment_form.comment }}
+            </div>
+            <div class="d-flex justify-content-end">
+              <button type="submit" class="btn btn-dark mt-2">Submit</button>
+            </div>
+          </div>
+        </div>
+      </form>
+      {% for c in social_comments %}
+      <div class="row mb-3">
+        <div class="col-auto d-flex justify-content-start">
+          <div class="custom-user-img">
+            <img
+              src="data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22286%22%20height%3D%22180%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20286%20180%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_195dc964b01%20text%20%7B%20fill%3A%23999%3Bfont-weight%3Anormal%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20monospace%3Bfont-size%3A14pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_195dc964b01%22%3E%3Crect%20width%3D%22286%22%20height%3D%22180%22%20fill%3D%22%23373940%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22107.1953125%22%20y%3D%2296.3%22%3E286x180%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E"
+              class="w-100" />
+          </div>
+        </div>
+        <div class="col">
+          <div class="mb-3">
+            <span class="fw-bold">{{ c.user }} </span>
+            <span class="text-secondary custom-dateTime-font"> {{ c.created_at }}</span>
+            <p class="mt-2">{{ c.comment }}</p>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  const iconElements = document.querySelectorAll('.icon-click');
+
+  iconElements.forEach(el => {
+    const likeCount = document.getElementById("like-count");
+    const icon = el.querySelector('i');  // find the <i> tag
+    const defaultIcon = el.getAttribute('data-default');
+    const clickIcon = el.getAttribute('data-click');
+
+    el.addEventListener('click', () => {
+      icon.classList.toggle(defaultIcon);
+      icon.classList.toggle(clickIcon);
+
+      var url = `https://infs3202-b65757a6.uqcloud.net/insighthubproject/publicProjects/{{ publicDashboard.id }}/like/`;
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+      })
+        .then(response => response.json())
+        .then(data => {
+          console.log(data.like_count);
+          likeCount.innerText = data.like_count;
+        })
+        .catch(error => console.error(error));
+    });
+  });
+
+  // preview card
+  const chartDataJson = JSON.parse('{{ chart_data|safe }}');
+  const axis = JSON.parse('{{ axis|escapejs }}');
+  const chartType = "{{ chart_type }}";
+  const canvas = document.getElementById("dashboardChart");
+
+  if (chartDataJson && chartDataJson.length > 1 && canvas) {
+    // Use axis info to find correct columns
+    const xCol = axis.x || chartDataJson[0][0];
+    const yCol = axis.y || chartDataJson[0][1];
+    const xIndex = chartDataJson[0].indexOf(xCol);
+    const yIndex = chartDataJson[0].indexOf(yCol);
+
+    const labels = [];
+    const values = [];
+    for (let i = 1; i < chartDataJson.length; i++) {
+      labels.push(chartDataJson[i][xIndex]);
+      values.push(parseFloat(chartDataJson[i][yIndex]));
+    }
+
+    // Generate a random colour for each bar
+    const chartData = {
+      labels: labels,
+      datasets: [{
+        label: yCol,
+        data: values,
+        backgroundColor: 'rgb(75, 192, 192)',
+        borderColor: 'rgb(75, 192, 192)',
+        borderWidth: 1
+      }]
+    };
+
+    new Chart(canvas, {
+      type: chartType,
+      data: chartData,
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'right'
+          },
+          tooltip: {
+            enabled: true
+          }
+        },
+        scales: {
+          x: { title: { display: true, text: xCol } },
+          y: { title: { display: true, text: yCol }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  // Helper to generate a random RGBA colour
+  function getRandomColor() {
+    const r = Math.floor(Math.random() * 256);
+    const g = Math.floor(Math.random() * 256);
+    const b = Math.floor(Math.random() * 256);
+    return `rgba(${r}, ${g}, ${b}, 0.7)`;
+  }
+</script>
+{% endblock %}
